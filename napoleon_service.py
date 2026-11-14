@@ -342,7 +342,7 @@ class NapoleonService:
         # Save results
         self.log("Consolidating imperial records and intelligence dossiers...", "info")
         try:
-            storage.save()
+            storage.save(overwrite=True)  # each campaign gets a clean results file
             storage.close()
         except Exception as e:
             self.log(f"Storage commit error: {e}", "warning")

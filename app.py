@@ -27,7 +27,7 @@ from napoleon_service import NapoleonService
 app = Flask(__name__, template_folder="templates", static_folder="static")
 CORS(app)
 
-PORT = 5000
+PORT = int(os.environ.get("NAPOLEON_PORT", "5000"))  # macOS AirPlay Receiver often holds 5000
 HOST = "127.0.0.1"
 
 
@@ -134,8 +134,9 @@ if __name__ == "__main__":
 ╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝      ╚═════╝ ╚══════╝╚══════╝ ╚═════╝ ╚═╝  ╚═══╝
     """)
     print("⚜️  Napoléon Imperial Web Reconnaissance & Intelligence Suite v2.0")
-    print("⚜️  Server running at http://127.0.0.1:5000")
+    print(f"⚜️  Server running at http://{HOST}:{PORT}")
     print("⚜️  Press Ctrl+C to stop the imperial server.\n")
 
-    threading.Thread(target=open_browser, daemon=True).start()
+    if not os.environ.get("NAPOLEON_NO_BROWSER"):
+        threading.Thread(target=open_browser, daemon=True).start()
     app.run(host=HOST, port=PORT, debug=False, threaded=True)

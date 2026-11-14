@@ -49,11 +49,12 @@ class StorageManager:
             except Exception as e:
                 print(f"[Storage] SQLite insert error: {e}")
 
-    def save(self):
-        # append to JSON file
-        if self.buffer:
+    def save(self, overwrite=False):
+        # Append to the JSON file, or replace it when overwrite=True (one file per
+        # campaign). Overwrite writes even an empty result, so stale data never lingers.
+        if self.buffer or overwrite:
             existing = []
-            if os.path.exists(self.json_path):
+            if not overwrite and os.path.exists(self.json_path):
                 try:
                     with open(self.json_path, "r", encoding="utf-8") as f:
                         existing = json.load(f)
