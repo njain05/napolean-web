@@ -289,7 +289,8 @@ document.addEventListener('DOMContentLoaded', () => {
             method: selectMethod.value,
             scan_security: checkSecurity.checked,
             generate_report: checkReport.checked,
-            generate_graph: checkGraph.checked
+            generate_graph: checkGraph.checked,
+            max_pages: parseInt(document.getElementById('max-pages')?.value, 10) || 0  // smart-crawl budget (ask.js)
         };
 
         if (!payload.url) {

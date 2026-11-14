@@ -2,6 +2,8 @@
 
 *It doesn't just collect pages — it understands them.*
 
+> **New for Hacknauts 2026:** smart (mission-guided) crawling, **Ask Napoléon** (ask the website questions in plain English and get the answer with its source page), and polite crawling with proxy rotation. **Who it's for, what's new, proof and the demo script: [PITCH.md](PITCH.md).**
+
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.8+-blue.svg" alt="Python Version">
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">

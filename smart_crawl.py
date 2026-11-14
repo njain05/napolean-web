@@ -22,14 +22,78 @@ import heapq
 import itertools
 import os
 import re
-from urllib.parse import urljoin, urlparse, unquote
+from urllib.parse import urljoin, urlparse, unquote, urlunparse, parse_qsl, urlencode
 
 import numpy as np
 from bs4 import BeautifulSoup
 
-from Napolean import normalize_link
+import qa_engine  # Ask Napoléon: every crawled page also feeds the question-answering index
 
 ANCHOR_TEXT_LIMIT = 200
+SKIP_EXTENSIONS = (".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp", ".ico", ".json", ".xml", ".exe", ".zip",
+                   ".rar", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".mp3", ".mp4", ".avi", ".css", ".js")
+TRACKING_PARAMS = ("utm_", "fbclid", "gclid", "ref", "share")
+SECOND_LEVEL = {"ac", "co", "gov", "org", "edu", "net", "com", "nic", "res"}
+
+
+# --------------------------------------------------------------------------- links
+# Replacement for Napolean.extract_links_from_html / normalize_link that
+#   * keeps ?query pages (CMS sites like gndec.ac.in/?q=node/3 are otherwise all
+#     collapsed into the home page), dropping only tracking parameters
+#   * treats subdomains of the same site as the same site (cse.gndec.ac.in belongs
+#     to gndec.ac.in), comparing real hostnames, never substrings
+
+def site_root(host):
+    """gndec.ac.in for cse.gndec.ac.in, example.com for www.example.com."""
+    parts = host.lower().split(":")[0].split(".")
+    if len(parts) >= 3 and len(parts[-1]) == 2 and parts[-2] in SECOND_LEVEL:
+        return ".".join(parts[-3:])
+    return ".".join(parts[-2:])
+
+
+def normalize_link(url):
+    try:
+        if not url.startswith(("http://", "https://")):
+            url = "https://" + url
+        p = urlparse(url)
+        if not p.netloc:
+            return None
+        query = urlencode(sorted((k, v) for k, v in parse_qsl(p.query, keep_blank_values=True)
+                                 if not k.lower().startswith(TRACKING_PARAMS)), safe="/:")
+        return urlunparse((p.scheme, p.netloc.lower(), p.path.rstrip("/"), "", query, ""))
+    except Exception:
+        return None
+
+
+def same_site(url, reference_url):
+    try:
+        u, r = urlparse(url), urlparse(reference_url)
+    except Exception:
+        return False
+    if u.scheme not in ("http", "https") or not u.netloc:
+        return False
+    return site_root(u.netloc) == site_root(r.netloc)
+
+
+def extract_links_from_html(html, base_domain):
+    """Same-site links on a page. `base_domain` is the page's own URL (relative links resolve from it)."""
+    links = set()
+    try:
+        soup = BeautifulSoup(html or "", "html.parser")
+    except Exception:
+        return links
+    for a in soup.find_all("a", href=True):
+        href = a["href"].strip()
+        if not href or href.startswith(("#", "mailto:", "tel:", "javascript:")):
+            continue
+        full = urljoin(base_domain, href)
+        if not same_site(full, base_domain) or urlparse(full).path.lower().endswith(SKIP_EXTENSIONS):
+            continue
+        link = normalize_link(full)
+        if link:
+            links.add(link)
+    return links
+
 SLUG_NOISE = {"index", "html", "htm", "php", "aspx", "asp", "www", "page", "catalogue", "category"}
 
 
@@ -57,6 +121,7 @@ class SmartFrontier:
         self.pending_scores = {}  # url -> score (filled in batches by remember_anchors)
         self.popped = 0
         self.budget_announced = False
+        qa_engine.store.reset()  # a new campaign starts a fresh Q&A index
 
         embedder = getattr(ai, "embedder", None)
         intent_emb = getattr(ai, "intent_embedding", None)
@@ -79,7 +144,10 @@ class SmartFrontier:
 
         Call this right after a page is fetched, before its links are put() in.
         """
-        if not self.smart or not isinstance(html, str):
+        if not isinstance(html, str):
+            return
+        qa_engine.store.add_page(page_url, html)
+        if not self.smart:
             return
         base = page_url  # same base the crawl loop passes to extract_links_from_html
         found = {}
@@ -87,6 +155,8 @@ class SmartFrontier:
             for a in BeautifulSoup(html, "html.parser").find_all("a", href=True):
                 # Same resolution as the crawl loop uses, so the URLs match.
                 link = normalize_link(urljoin(base, a["href"].strip()))
+                if not link:
+                    continue
                 text = (a.get("title") or a.get_text(" ", strip=True) or "").strip()
                 if text:
                     found.setdefault(link, set()).add(text[:ANCHOR_TEXT_LIMIT])

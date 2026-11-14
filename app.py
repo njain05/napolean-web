@@ -27,6 +27,9 @@ from napoleon_service import NapoleonService
 app = Flask(__name__, template_folder="templates", static_folder="static")
 CORS(app)
 
+from chat_api import ask_bp  # Ask Napoléon: questions about the crawled site
+app.register_blueprint(ask_bp)
+
 PORT = int(os.environ.get("NAPOLEON_PORT", "5000"))  # macOS AirPlay Receiver often holds 5000
 HOST = "127.0.0.1"
 

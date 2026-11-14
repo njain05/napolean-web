@@ -40,7 +40,7 @@ from Napolean import (
     DEFAULT_TIMEOUT
 )
 from safe_fetch import fetch_html_with_requests  # polite crawling + proxy rotation (overrides the import above)
-from smart_crawl import SmartFrontier  # best-links-first crawl order when a mission is set
+from smart_crawl import SmartFrontier, extract_links_from_html  # best-links-first crawl order; link reader that keeps ?q= pages and same-site subdomains (overrides the import above)
 
 NAPOLEON_VICTORY_QUOTES = [
     "The map expands — glory to our conquest!",
