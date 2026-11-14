@@ -40,6 +40,11 @@ def get_selenium_driver(headless=False, window_size=(1200, 800)):
 def fetch_html_with_requests(url , timeout=DEFAULT_TIMEOUT ):
     try:
         response= requests.get(url=url , headers=HEADERS , timeout=timeout , allow_redirects=True)
+        # Without a charset in Content-Type, requests assumes ISO-8859-1, which turns
+        # UTF-8 symbols like "–" into "â€“". Detect the real encoding instead.
+        content_type = response.headers.get("Content-Type", "").lower()
+        if "charset" not in content_type:
+            response.encoding = response.apparent_encoding
         return response.status_code, response.text
     except Exception as e:
         print(f"[Error fetching {url}]: {e}")

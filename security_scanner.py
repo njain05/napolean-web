@@ -349,7 +349,7 @@ class SecurityScanner:
                 })
             
             # Check for missing CSRF token (common patterns)
-            has_csrf = form.find("input", attrs={"name": re.compile(r"csrf|token|_token)", re.I)})
+            has_csrf = form.find("input", attrs={"name": re.compile(r"csrf|token|_token", re.I)})
             if not has_csrf:
                 findings.append({
                     "type": "form_security",

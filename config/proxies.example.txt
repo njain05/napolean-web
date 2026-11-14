@@ -1,0 +1,6 @@
+# Napoléon proxy list — copy this file to config/proxies.txt and add your proxies.
+# One per line. config/proxies.txt is git-ignored, so passwords never get committed.
+# Formats:
+#   http://1.2.3.4:8080
+#   http://username:password@proxy.example.com:8000
+#   1.2.3.4:3128                (http:// is assumed)

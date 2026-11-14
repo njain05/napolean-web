@@ -803,3 +803,14 @@ body.vintage-parchment-theme {
     color: var(--ink-muted);
     font-style: italic;
 }
+
+/* Dark ink for table text (replaces leftover white text from the old dark theme) */
+.text-ink {
+    color: var(--ink-black) !important;
+}
+
+/* Relevance bar track */
+.relevance-track {
+    height: 5px;
+    background: rgba(90, 69, 54, 0.15);
+}

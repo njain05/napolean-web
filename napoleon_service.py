@@ -39,6 +39,8 @@ from Napolean import (
     get_selenium_driver,
     DEFAULT_TIMEOUT
 )
+from safe_fetch import fetch_html_with_requests  # polite crawling + proxy rotation (overrides the import above)
+from smart_crawl import SmartFrontier  # best-links-first crawl order when a mission is set
 
 NAPOLEON_VICTORY_QUOTES = [
     "The map expands — glory to our conquest!",
@@ -217,7 +219,7 @@ class NapoleonService:
                 self.log(f"Selenium deployment failed: {e}. Falling back to Requests.", "warning")
                 method = "requests"
 
-        q = queue.Queue()
+        q = SmartFrontier(ai, intent, max_pages=options.get("max_pages"), max_depth=max_depth, log=self.log)  # was: queue.Queue()
         visited = set()
         queued = set()
 
@@ -264,7 +266,7 @@ class NapoleonService:
                     continue
 
                 # Extract links
-                links = extract_links_from_html(html=html, base_domain=base_domain)
+                links = extract_links_from_html(html=html, base_domain=url)  # resolve relative links from this page, not the site root
                 with self.lock:
                     self.state["links_discovered"] += len(links)
 
@@ -319,6 +321,7 @@ class NapoleonService:
                     self.log(random.choice(NAPOLEON_VICTORY_QUOTES), "gold")
 
                 # Enqueue new links
+                q.remember_anchors(html, url)  # score links by their text before queueing
                 for link in links:
                     if link not in visited and link not in queued:
                         q.put((link, depth + 1))

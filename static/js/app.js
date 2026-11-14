@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td><span class="badge ${badgeClass} text-uppercase">${sev}</span></td>
                     <td class="font-monospace text-muted small">${f.type || 'RECON'}</td>
                     <td>
-                        <strong class="text-white d-block">${f.title || 'Security Finding'}</strong>
+                        <strong class="text-ink d-block">${f.title || 'Security Finding'}</strong>
                         <div class="small text-muted">${f.description || ''}</div>
                     </td>
                     <td>
@@ -457,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const pages = (crawled || []).slice(0, 5);
             if (pages.length) {
                 topPagesBox.innerHTML = pages.map((p, idx) => `
-                    <div class="list-group-item bg-transparent text-white border-dark py-3">
+                    <div class="list-group-item bg-transparent text-ink border-dark py-3">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <strong class="text-gold">#${idx + 1} ${p.title || 'Untitled Territory'}</strong>
                             <span class="badge ${p.relevance_score > 0.6 ? 'bg-success' : 'badge-gold'}">
@@ -506,6 +506,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Same filter as ai_engine.USEFUL_ENTITY_TYPES, so results saved before
+    // that filter existed also display cleanly: no numbers/dates, no repeats.
+    const USEFUL_ENTITY_TYPES = new Set(['PERSON', 'ORG', 'GPE', 'LOC', 'NORP', 'FAC', 'EVENT', 'PRODUCT', 'WORK_OF_ART', 'LAW']);
+    function uniqueEntities(entities) {
+        const seen = new Set();
+        return (entities || []).filter(e => {
+            const text = (e.text || '').replace(/\s+/g, ' ').trim();
+            const key = text.toLowerCase();
+            if (!text || !USEFUL_ENTITY_TYPES.has(e.type) || seen.has(key)) return false;
+            seen.add(key);
+            e.text = text;
+            return true;
+        });
+    }
+
     function renderTerritories(crawled) {
         const body = document.getElementById('territories-table-body');
         if (!body) return;
@@ -522,27 +537,32 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Relevance only exists when the scan had a topic. Pages below 0.2 are
+        // dropped in that case, so all-zero scores mean "no topic was given".
+        const hasRelevance = list.some(p => (p.relevance_score || 0) > 0);
+
         body.innerHTML = list.map(p => {
             const rel = (p.relevance_score || 0).toFixed(2);
+            const relCell = hasRelevance ? `
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small font-monospace">${rel}</span>
+                            <div class="progress flex-grow-1 relevance-track">
+                                <div class="progress-bar ${rel > 0.6 ? 'bg-success' : 'bg-warning'}" style="width: ${rel * 100}%"></div>
+                            </div>
+                        </div>`
+                : `<span class="text-muted" title="Enter a topic before scanning to get relevance scores">–</span>`;
             const emails = (p.emails || []).join(', ') || '-';
-            const entities = (p.entities || []).slice(0, 4).map(e => `<span class="badge badge-gold me-1">${e.text}</span>`).join('') || '-';
+            const entities = uniqueEntities(p.entities).slice(0, 4).map(e => `<span class="badge badge-gold me-1">${e.text}</span>`).join('') || '-';
 
             return `
                 <tr>
-                    <td><strong class="text-white">${p.title || 'Untitled'}</strong></td>
+                    <td><strong class="text-ink">${p.title || 'Untitled'}</strong></td>
                     <td>
                         <a href="${p.url}" target="_blank" class="small text-gold font-monospace text-break">
                             ${p.url}
                         </a>
                     </td>
-                    <td>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="small font-monospace">${rel}</span>
-                            <div class="progress flex-grow-1" style="height: 5px; background: #152236;">
-                                <div class="progress-bar ${rel > 0.6 ? 'bg-success' : 'bg-warning'}" style="width: ${rel * 100}%"></div>
-                            </div>
-                        </div>
-                    </td>
+                    <td>${relCell}</td>
                     <td>${entities}</td>
                     <td class="font-monospace small text-danger">${emails}</td>
                 </tr>
@@ -587,7 +607,7 @@ document.addEventListener('DOMContentLoaded', () => {
             body.innerHTML = archives.map(a => `
                 <tr>
                     <td class="font-monospace small text-gold">${a.id}</td>
-                    <td><a href="${a.target_url}" target="_blank" class="text-white small font-monospace">${a.target_url}</a></td>
+                    <td><a href="${a.target_url}" target="_blank" class="text-ink small font-monospace">${a.target_url}</a></td>
                     <td class="text-muted small">${a.intent || 'General Recon'}</td>
                     <td>
                         <span class="badge ${a.status === 'completed' ? 'bg-success' : 'bg-warning'} text-uppercase">

@@ -290,12 +290,25 @@ class NapoleanAI:
         
         return round(min(1.0, score), 3)
 
+    # spaCy also tags numbers and dates (CARDINAL, DATE, TIME, ...), which are
+    # noise for research ("four", "2026", "today"). Keep named things only.
+    USEFUL_ENTITY_TYPES = {"PERSON", "ORG", "GPE", "LOC", "NORP", "FAC",
+                           "EVENT", "PRODUCT", "WORK_OF_ART", "LAW"}
+
     def extract_entities(self, text):
+        if not self.nlp:
+            return []
         doc = self.nlp(text)
-        return [
-        {"text": ent.text, "type": ent.label_}
-        for ent in doc.ents  
-        ]
+        seen = set()
+        entities = []
+        for ent in doc.ents:
+            name = " ".join(ent.text.split())
+            key = name.lower()
+            if ent.label_ not in self.USEFUL_ENTITY_TYPES or not name or key in seen:
+                continue
+            seen.add(key)
+            entities.append({"text": name, "type": ent.label_})
+        return entities
         
     def summarize(self, text, max_len=400):
          sentences = re.split(r'(?<=[.!?]) +', text)
